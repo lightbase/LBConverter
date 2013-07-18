@@ -1,2 +1,0 @@
-def testes():
-	print('ola')

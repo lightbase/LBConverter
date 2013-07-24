@@ -1,12 +1,13 @@
 
 # Instalação de bibliotecas necessárias:
 
+~$ sudo apt-get install python2.7
 ~$ sudo apt-get install python-uno
 ~$ sudo apt-get install python-setuptools
+
+# Para se pegar o repositório do GitHub:
+
 ~$ sudo apt-get install git
-
-# Para se pegar o repositório:
-
 ~$ git init
 ~$ git clone https://github.com/brenorb/LBConverter.git
 

@@ -1,22 +1,19 @@
 # -*- coding: utf-8 -*-
 
-import time
 import logging
 
 def is_error(url, jsonfull):
     """Se houver erro de requisição, escreve nos logs"""
-    if len(jsonfull) !=4:
-        logger.error(url + " jsonfull nao tem 4 parametros")
-        erro = True
-    elif ('_status' in jsonfull and 
-          '_error_message' in jsonfull and 
-          '_request' in jsonfull and 
-          '_path' in jsonfull):
-        logger.error (url + 'não pode ser indexado pelo seguinte motivo: ' + 
-                      jsonfull['_status'] + jsonfull['_error_message'])
-        erro = True
+ json = resp.json()
+    try:
+      a = len(json)
+    except TypeError:
+      id_reg = str(json)
+      logger.info('Escrito com sucesso id_reg: ' + id_reg)
     else:
-        erro = False
-    return erro
+      msg = json['_error_message']
+      n_err = str(json['_status'])
+      logger.error(n_err + ': ' + msg)
+
 
 logger = logging.getLogger("LBConverter")

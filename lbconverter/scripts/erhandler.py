@@ -4,7 +4,7 @@ import logging
 
 def is_error(url, jsonfull):
     """Se houver erro de requisição, escreve nos logs"""
- json = resp.json()
+    json = jsonfull.json()
     try:
       a = len(json)
     except TypeError:
@@ -13,7 +13,7 @@ def is_error(url, jsonfull):
     else:
       msg = json['_error_message']
       n_err = str(json['_status'])
-      logger.error(n_err + ': ' + msg)
+      logger.error(n_err + ': ' + msg + " em " + url)
 
 
 logger = logging.getLogger("LBConverter")

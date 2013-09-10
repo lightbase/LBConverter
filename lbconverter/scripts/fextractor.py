@@ -43,23 +43,22 @@ def extrator(url,outpath,filename):
     f_texto = ['doc','docx','odt','rtf','txt','html','pdf']
   
     if not(formato_in in f_texto):
-        logger.warning("Erro: O arquivo de entrada nao e texto!")
+        logger.warning("O arquivo de entrada nao e texto!")
         
-    if formato_in == 'pdf':
+    elif formato_in == 'pdf':
         # Chama o PDFtoText para converter o arquivo PDF        
         try:
             logger.debug('converter pdf')
             texto = subprocess.call(["pdftotext", local_path,'-'])
         except OSError as err:
             logger.error(err)
-
-        
+            flag = 1        
         else:
             infile = infile.split(".")[0]+".txt"
             logger.debug(infile)
 
     else:
-        logger.debug ('iniciando o uno')
+        logger.debug('iniciando o uno')
         # Se não for pdf, o uno abre, converte e salva em um arquivo txt
         flag = unoconv(infile, outfile)
         if not flag: # se der certo, ele lê o arquivo e salva o texto
@@ -74,9 +73,12 @@ def extrator(url,outpath,filename):
         url1 = url1 + '/' + sembarra[parte] 
 
     logger.info ('-------' + url1 + '-------')
-    f = escrevetxt(url1, texto)
+    if not flag:
+        f = escrevetxt(url1, texto)
+        logger.info(f)
+    else:
+        logger.info("Nada foi escrito")
     sleep(0.5)
-    logger.info(f)
     
 
 logger = logging.getLogger("LBConverter")

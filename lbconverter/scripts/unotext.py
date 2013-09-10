@@ -47,8 +47,8 @@ def unoconv(infile, outfile):
         TXT.Name = "FilterName"
         TXT.Value = "Text"
         document.storeAsURL(outfile, (TXT,))    
+        document.dispose()
     
-    document.dispose()
     return flag    
 
 logger = logging.getLogger("LBConverter")

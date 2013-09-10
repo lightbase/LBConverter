@@ -13,29 +13,31 @@ def unoconv(infile, outfile):
         subprocess.call(['soffice',
                          '--accept=socket,host=localhost,port=2002;urp;'])
     except:
-        logger.error("Possivelmente o StarOffice Uno não está instalado")
-    flag = 0
-    """Inicializando o PyUno"""
-    """Now import the OpenOffice component context. """
-    local = uno.getComponentContext()
-    """Now access the UnoUrlResolver service. This will allow you to 
-    connect to OpenOffice.org program. """
-    resolver = local.ServiceManager.createInstanceWithContext(
-                                   "com.sun.star.bridge.UnoUrlResolver", local)
-    """Now load the context and you are now connected. You can access
-     OpenOffice via its API mechanism. """
-    context = resolver.resolve(
-         "uno:socket,host=localhost,port=2002;urp;StarOffice.ComponentContext")
-    
-    """load Desktop service"""
-    desktop = context.ServiceManager.createInstanceWithContext(
-                                         "com.sun.star.frame.Desktop", context)
-    try:
-        document = desktop.loadComponentFromURL(infile, "_blank", 0, ())
-    except:
-        print("Erro: arquivo possivelmente corrompido")
+        logger.error("Não foi possivel abrir o StarOffice Uno.")
         flag = 1
-        pass
+    else:
+        flag = 0
+        """Inicializando o PyUno"""
+        """Now import the OpenOffice component context. """
+        local = uno.getComponentContext()
+        """Now access the UnoUrlResolver service. This will allow you to 
+        connect to OpenOffice.org program. """
+        resolver = local.ServiceManager.createInstanceWithContext(
+                                       "com.sun.star.bridge.UnoUrlResolver", local)
+        """Now load the context and you are now connected. You can access
+         OpenOffice via its API mechanism. """
+        context = resolver.resolve(
+             "uno:socket,host=localhost,port=2002;urp;StarOffice.ComponentContext")
+        
+        """load Desktop service"""
+        desktop = context.ServiceManager.createInstanceWithContext(
+                                         "com.sun.star.frame.Desktop", context)
+        try:
+            document = desktop.loadComponentFromURL(infile, "_blank", 0, ())
+        except:
+            logger.error("Arquivo possivelmente corrompido")
+            flag = 1
+            pass
     
     if not flag:
 

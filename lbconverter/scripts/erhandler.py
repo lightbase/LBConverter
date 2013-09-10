@@ -4,7 +4,11 @@ import logging
 
 def is_error(url, jsonfull):
     """Se houver erro de requisição, escreve nos logs"""
-    json = jsonfull.json()
+    try:
+      json = jsonfull.json()
+    except:
+      logger.debug(jsonfull)
+      logger.debug("em " + url)
     try:
       a = len(json)
     except TypeError:

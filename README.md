@@ -1,39 +1,24 @@
 
-# Instalação de bibliotecas necessárias:
+LBCONVERTER INSTALLATION
 
-~$ sudo apt-get install python2.7
-~$ sudo apt-get install python-uno
-~$ sudo apt-get install python-setuptools
+# First install required libs:
 
-# Para se pegar o repositório do GitHub:
+openoffice.org-headless
+# Please see: http://code.google.com/p/openmeetings/wiki/OpenOfficeConverter#Install_Open_Office_Service_on_Debian/(K)Ubuntu_(versions_>_2)
+python2.7
+python-uno
+python-setuptools
 
-~$ sudo apt-get install git
-~$ git init
-~$ git clone https://github.com/brenorb/LBConverter.git
+# Install LBConverter:
 
-# Entre na pasta que foi baixado e instale com o comando:
-
+~$ cd $PATH-TO-LBCONVERTER/LBConverter
+IMPORTANT -> Rename the file production.ini-dist to production.ini and make the necessary changes
 ~$ sudo python setup.py install
 
-# Crie um arquivo development.ini como o modelo e altere as configurações:
+# Start OpenOffice process if is not already started:
+~$ sudo soffice --accept="socket,host=localhost,port=8100;urp;StarOffice.Service" --headless --nofirststartwizard
 
-[LBConverter]
-###Url de acesso à aplicação (usar '/' no fim)
-domain: http://0.0.0.0/
-###Local do disco onde o arquivo será salvo temporariamente
-outpath: /tmp/extract/
-###Tempo entre as leituras em busca de registros (em segundos)
-sleep_time: 15
-
-[Daemon]
-stdin_path = /dev/null
-stdout_path = /dev/tty
-stderr_path = /dev/tty
-pidfile_path = /var/run/lbconverter.pid
-logfile_path = /var/log/lbconverter.log
-pidfile_timeout = 5
-
-# Para usá-lo basta digitar na pasta do arquivo:
+# And then start the daemon:
 
 ~$ sudo python lbconverter start
 ~$ sudo python lbconverter stop

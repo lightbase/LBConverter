@@ -1,78 +1,68 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-# To kick off the script, run the following from the python directory:
-#   PYTHONPATH=`pwd` python testdaemon.py start
 
-#standard python libs
 import logging
 import time
-
-#Indexador
-from app import main
-
-#third party libs
 from daemon import runner
 from requests.exceptions import *
-import ConfigParser
+import lbconverter
+import config
+import subprocess
+import commands
 
+config.set_config()
 
-def setconfig():
-    """Função que conecta o modulo ao arquivo de configurações"""
-
-    config = ConfigParser.ConfigParser()
-    config.read('development.ini')
-    user = {}
-    user['domain'] = config.get('LBConverter', 'domain')
-    user['outpath'] = config.get('LBConverter', 'outpath')
-    user['sleep_time'] = int(config.get('LBConverter', 'sleep_time'))
-    user['stdin_path'] = config.get('Daemon', 'stdin_path')
-    user['stdout_path'] = config.get('Daemon', 'stdout_path')
-    user['stderr_path'] = config.get('Daemon', 'stderr_path')
-    user['pidfile_path'] = config.get('Daemon', 'pidfile_path')
-    user['logfile_path'] = config.get('Daemon', 'logfile_path')
-    user['pidfile_timeout'] = int(config.get('Daemon', 'pidfile_timeout'))
-    return user
+#from unoconv import DocumentConverter
+#config.CONVERTER = DocumentConverter()    
+def run_soffice():
+    command = [
+        'soffice',
+        '--accept="socket,host=localhost,port=%s;urp;StarOffice.Service"' % config.DEFAULT_OPENOFFICE_PORT, 
+        '--headless', 
+        '--nofirststartwizard'
+    ] 
+    processes = commands.getoutput('ps -A')
+    if not 'soffice' in processes:
+        print('calling soffice ... ')
+        subprocess.Popen(command)
 
 class App():
    
     def __init__(self):
-        self.stdin_path = user['stdin_path']
-        self.stdout_path = user['stdout_path']
-        self.stderr_path = user['stderr_path']
-        self.pidfile_path =  user['pidfile_path']
-        self.pidfile_timeout = user['pidfile_timeout']
+        self.stdin_path = config.STDIN_PATH
+        self.stdout_path = config.STDOUT_PATH
+        self.stderr_path = config.STDERR_PATH
+        self.pidfile_path =  config.PIDFILE_PATH
+        self.pidfile_timeout = config.PIDFILE_TIMEOUT
            
     def run(self):
         while True:
             timeron = time.time()
-            logger.info ('Iniciando rotina de extração de texto')
+            #run_soffice()
             try:
-                main(domain,outpath)
-
-            except (ConnectionError, Timeout):
-                logger.error ('Não foi possivel estabelecer conexão com o servidor! ' + domain)
+                lbconverter.main()
+            except (ConnectionError, Timeout) as e:
+                logger.error ('Não foi possivel estabelecer conexão com o servidor! ' + config.REST_URL)
             # except:
             #     logger.error ('Erro inesperado')
             timeronff = time.time()
             tempo = (timeronff - timeron)
             tempo = str(tempo)
-            str_sleep_time = str(sleep_time)
+            str_sleep_time = str(config.SLEEP_TIME)
             logger.info ('Esta execução gastou ' + tempo + ' segundos. Agora uma pausa de ' + str_sleep_time + ' segundos.')
-            time.sleep(sleep_time)
+            time.sleep(config.SLEEP_TIME)
 
-user = setconfig()
-domain = user['domain']
-sleep_time = user['sleep_time']
-outpath = user['outpath']
-app = App()
+
+# Set up log configurations
 logger = logging.getLogger("LBConverter")
 logger.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-handler = logging.FileHandler(user['logfile_path'])
+handler = logging.FileHandler(config.LOGFILE_PATH)
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
-daemon_runner = runner.DaemonRunner(app)
+# Run Daemon
+daemon_runner = runner.DaemonRunner(App())
 #This ensures that the logger file handle does not get closed during daemonization
 daemon_runner.daemon_context.files_preserve=[handler.stream]
 daemon_runner.do_action()

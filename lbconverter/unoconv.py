@@ -1,19 +1,39 @@
 # -*- coding: utf-8 -*-
 import logging
-import subprocess
 import uno
+import subprocess
+from subprocess import CalledProcessError
 from os.path import abspath, splitext
 from com.sun.star.beans import PropertyValue
 from com.sun.star.task import ErrorCodeIOException
 from com.sun.star.connection import NoConnectException
 import config
 from exception import DocumentConversionException
+from exception import UnoConnectionException
 import uuid
+import time
 
-#https://github.com/mirkonasato/pyodconverter
+def raise_uno_process():
+    """ Check if soffice process is running. Case negative, tries to run it.
+    """
+    try:
+        subprocess.check_call('ps -ef | grep -v grep | grep soffice.bin', shell=True, stdout=subprocess.PIPE)
+    except CalledProcessError:
+        command = [
+            'soffice',
+            '--accept=socket,host=localhost,port=%s;urp;StarOffice.Service' % config.DEFAULT_OPENOFFICE_PORT,
+            '--headless',
+            '--nologo',
+            '--nofirststartwizard'
+        ]
+        subprocess.Popen(command, stdout=subprocess.PIPE)
+        time.sleep(5)
 
-class DocumentConverter:
-    
+class DocumentConverter():
+    """ Convert documents extensions
+        See: https://github.com/mirkonasato/pyodconverter
+    """
+
     def __init__(self):
         port = config.DEFAULT_OPENOFFICE_PORT
         localContext = uno.getComponentContext()
@@ -23,47 +43,34 @@ class DocumentConverter:
             context = resolver.resolve(
                 "uno:socket,host=localhost,port=%s;urp;StarOffice.ComponentContext" % port)
         except NoConnectException:
-            #raise DocumentConversionException, "failed to connect to OpenOffice.org on port %s" % port
-            print('OpenOffice não aceita conexão na porta %s, parando daemon!' % port)
-            logger.error('OpenOffice não aceita conexão na porta %s, parando daemon!' % port)
-            exit(1)
+            error_msg = "failed to connect to OpenOffice.org on port %s" % port
+            logger.error(error_msg)
+            raise UnoConnectionException, error_msg
         self.desktop = context.ServiceManager.createInstanceWithContext("com.sun.star.frame.Desktop", context)
 
     def get_file_text(self, inputFile, inputExt):
 
         inputUrl = self._toFileUrl(inputFile)
-        outputFile = config.OUTPATH + '/' + str(uuid.uuid4()) + '.txt'
-        outputUrl = self._toFileUrl(outputFile)
-
-        loadProperties = { 'Hidden': True, 'RepairPackage': True }
+        loadProperties = config.IMPORT_FILTER_MAP['default']
 
         if config.IMPORT_FILTER_MAP.has_key(inputExt):
             loadProperties.update(config.IMPORT_FILTER_MAP[inputExt])
-        
+
         try:
             document = self.desktop.loadComponentFromURL(
                 inputUrl, "_blank", 0, self._toProperties(loadProperties))
             document.refresh()
-        except:
-            return None
-
-        family = self._detectFamily(document)
-        self._overridePageStyleProperties(document, family)
-        outputExt = 'txt'
-        storeProperties = self._getStoreProperties(document, outputExt)
+        except Exception as exception:
+            raise DocumentConversionException, "Error while loading desktop component: %s" % exception
 
         document_text = None
-        is_stored = False
 
         try:
-            document.storeToURL(outputUrl, self._toProperties(storeProperties))
-            is_stored = True
+            document_text = document.Text.getString()
+        except Exception as exception:
+            raise DocumentConversionException, "Error while extracting document text: %s" % exception
         finally:
             document.close(True)
-
-        if is_stored:
-            with open(outputFile) as f:
-                document_text = f.read()
 
         return document_text
 
@@ -86,7 +93,7 @@ class DocumentConverter:
             return propertiesByFamily[family]
         except KeyError:
             raise DocumentConversionException, "unsupported conversion: from '%s' to '%s'" % (family, outputExt)
-    
+
     def _detectFamily(self, document):
         if document.supportsService("com.sun.star.text.WebDocument"):
             return config.FAMILY_WEB
@@ -117,5 +124,6 @@ class DocumentConverter:
             prop.Value = dict[key]
             props.append(prop)
         return tuple(props)
+
 
 logger = logging.getLogger("LBConverter")

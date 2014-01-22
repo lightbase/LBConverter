@@ -7,16 +7,11 @@ def set_config():
     config = ConfigParser.ConfigParser()
     config.read('development.ini')
 
-    global REST_URL 
-    global OUTPATH 
-    global DEFAULT_OPENOFFICE_PORT 
-    global SLEEP_TIME 
-    global STDIN_PATH 
-    global STDOUT_PATH 
-    global STDERR_PATH 
-    global PIDFILE_PATH 
-    global LOGFILE_PATH 
-    global PIDFILE_TIMEOUT 
+    global REST_URL
+    global OUTPATH
+    global DEFAULT_OPENOFFICE_PORT
+    global PIDFILE_PATH
+    global LOGFILE_PATH
     global SUPPORTED_FILES
 
     #---------------------#
@@ -26,13 +21,8 @@ def set_config():
     REST_URL = config.get('LBConverter', 'rest_url')
     OUTPATH = config.get('LBConverter', 'outpath')
     DEFAULT_OPENOFFICE_PORT = int(config.get('LBConverter', 'default_openoffice_port'))
-    SLEEP_TIME = int(config.get('LBConverter', 'sleep_time'))
-    STDIN_PATH = config.get('Daemon', 'stdin_path')
-    STDOUT_PATH = config.get('Daemon', 'stdout_path')
-    STDERR_PATH = config.get('Daemon', 'stderr_path')
     PIDFILE_PATH = config.get('Daemon', 'pidfile_path')
     LOGFILE_PATH = config.get('Daemon', 'logfile_path')
-    PIDFILE_TIMEOUT = int(config.get('Daemon', 'pidfile_timeout'))
     SUPPORTED_FILES = [
         'doc',
         'docx',
@@ -56,11 +46,11 @@ def set_config():
     # Configuration End #
     #-------------------#
 
-    global FAMILY_TEXT 
-    global FAMILY_WEB 
-    global FAMILY_SPREADSHEET 
-    global FAMILY_PRESENTATION 
-    global FAMILY_DRAWING 
+    global FAMILY_TEXT
+    global FAMILY_WEB
+    global FAMILY_SPREADSHEET
+    global FAMILY_PRESENTATION
+    global FAMILY_DRAWING
 
     FAMILY_TEXT = "Text"
     FAMILY_WEB = "Web"
@@ -72,7 +62,7 @@ def set_config():
 
     # most formats are auto-detected; only those requiring options are defined here
 
-    global IMPORT_FILTER_MAP 
+    global IMPORT_FILTER_MAP
     IMPORT_FILTER_MAP = {
         "txt": {
             "FilterName": "Text (encoded)",
@@ -81,6 +71,11 @@ def set_config():
         "csv": {
             "FilterName": "Text - txt - csv (StarCalc)",
             "FilterOptions": "44,34,0"
+        },
+        'default':{
+            'Hidden': True, 
+            'RepairPackage': True, 
+            'Silent': True,
         }
     }
 

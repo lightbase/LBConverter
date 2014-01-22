@@ -1,93 +1,172 @@
 
 # -*- coding: utf-8 -*-
+import os
+import sys
 import config
 import time
-import lbrest
 import logging
+import uno
+import datetime
 from subprocess import PIPE
 from subprocess import Popen
-import uno
+from multiprocessing import Pool
 from com.sun.star.task import ErrorCodeIOException
 from exception import DocumentConversionException
+from exception import UnoConnectionException
 from unoconv import DocumentConverter
+from unoconv import raise_uno_process
+from lbrest import LBRest
 
 def main():
-    """Função principal que busca as bases do banco de dados
-    e dentro delas, busca os arquivos que precisam de ter seus
-    textos extraídos, os extrai e escreve no texto_doc do banco"""
+    """
+    """
 
-    logger.info ('Iniciando rotina de extração de texto ...')
-
+    lbrest = LBRest()
     bases = lbrest.get_bases()
     if bases:
-        for _base in bases:
-            base = _base['nome_base']
-            base = _base['extract_time']
-            logger.info ('Extraindo textos da base %s ...' % base)
-            files = lbrest.get_files(base)
-            if files:
-                extract_base_files(base, files)
-            else:
-                logger.info ('Nenhum documento encontrado.')
+        pool = Pool(processes=len(bases))
+        pool.map(convert_files, bases)
 
-def extract_base_files(base, files):
+def convert_files(args):
     """ Download each file from base and try to extract texts """
 
-    for _file in files:
+    base = args['nome_base']
+    extract_time = args['extract_time']
 
-        file_name = _file['nome_doc']
-        file_format = file_name.split(".")[-1].lower()
-        download_url = _file['blob_doc']
-        id = download_url.split("/")[-2]
+    while(1):
+        logger.info('STARTING PROCESS EXECUTION FOR %s' % base)
+        # Get initial time
+        ti = datetime.datetime.now()
 
-        logger.info ('Arquivo: id=%s, nome=%s' % (id, file_name))
-        if file_format in config.SUPPORTED_FILES:
+        # Execute process
+        raise_uno_process()
+        base_converter = BaseConverter(base)
+        base_converter.run_conversion()
 
-           logger.info('Começando o processo de extração do texto ...')
-           local_path = lbrest.download(download_url)
-           if local_path:
-               text = extract(local_path, file_format)
-               if text:
-                   lbrest.write_text(base, id, text)
-               else:
-                   logger.info('Não foi possível extrair o texto do documento. Escrevendo "" ...')
-                   text = ''
-                   lbrest.write_text(base, id, text)
-                   time.sleep(0.5)
-           else:
-               logger.info('Não foi possível baixar o documento. Indo para o próximo.')
+        # Get final time
+        tf = datetime.datetime.now()
+
+        # Calculate interval
+        execution_time = tf - ti
+        _extract_time = datetime.timedelta(minutes=extract_time)
+
+        if execution_time >= _extract_time:
+            interval = 0
         else:
-            logger.info('Tipo de arquivo não contém texto. Escrevendo "" ...')
-            text = ''
-            lbrest.write_text(base, id, text)
-            time.sleep(0.5)
+            interval = _extract_time - execution_time
 
-def extract(file_path, file_format):
-    """ Extract text from file """
+        interval_minutes = (interval.seconds//60)%60
 
-    file_text = None
-    if file_format == 'pdf':
+        #logger.info('Finished execution for base %s, will wait for %s minutes' % (base, interval_minutes))
+        logger.info('Finished execution for base %s, will wait for %s seconds' % (base, interval.seconds))
+
+        # Sleep interval
+        time.sleep(interval.seconds)
+        pid = os.getppid()
+        if pid == 1:
+            logger.info('STOPPING PROCESS EXECUTION FOR %s' % base)
+            sys.exit(1)
+
+class BaseConverter():
+
+    def __init__(self, base):
+        self.base = base
+        self.lbrest = LBRest(base)
+        self.files = self.lbrest.get_files()
+        self.passed_files = self.lbrest.get_passed_files()
+
+    def is_supported_file(self, id, file_name, file_format):
+        if not file_format in config.SUPPORTED_FILES:
+            logger.info('File %s , with id %s from base %s is not supported, writing " "' % (file_name, id, self.base))
+            self.lbrest.write_text(id, '')
+            return False
+        return True
+
+    def run_conversion(self):
+
+        for _file in self.files:
+
+            file_name = _file['nome_doc']
+            file_format = file_name.split(".")[-1].lower()
+            download_url = _file['blob_doc']
+            id = download_url.split("/")[-2]
+
+            if id in self.passed_files:
+                continue
+
+            if not self.is_supported_file(id, file_name, file_format):
+                continue
+
+            logger.info ('Arquivo: base=%s, id=%s, nome=%s' % (self.base, id, file_name))
+
+            local_path = self.lbrest.download(download_url)
+            if not local_path:
+                continue
+
+            text = self.extract_text(id, file_name, local_path, file_format)
+            os.remove(local_path)
+
+            if text:
+                self.lbrest.write_text(id, text)
+
+    def extract_text(self, id, file_name, file_path, file_format):
+        """ Extract text from file """
+
+        extract_methods = {
+            'pdf': self.read_pdf,
+            'xml': self.read_textfile,
+            'html': self.read_textfile,
+            'txt': self.read_textfile
+        }
+
+        extract_method = extract_methods.get(file_format, self.read_document)
+        return extract_method(id, file_name, file_path, file_format)
+
+    def read_pdf(self, id, file_name, file_path, file_format):
         try:
-            logger.debug('Converter pdf. Chamando pdftotext ...')
             process = Popen(["pdftotext", file_path,'-'], stdout=PIPE, stderr=PIPE, stdin=PIPE)
             file_text, err = process.communicate()
-        except OSError as err:
-            logger.error('Erro ao converter pdf: %s' % err)
-    elif file_format == 'xml' or file_format == 'html' or file_format == 'txt':
+            if not file_text:
+                raise Exception('Documento pdf possivelmente corrompido ou nao contem texto')
+            return file_text or None
+        except Exception as exception:
+            error_msg= 'Erro ao converter pdf: %s' % exception
+            logger.error(error_msg)
+            self.lbrest.write_error(id, file_name, error_msg)
+
+    def read_textfile(self, id, file_name, file_path, file_format):
         try:
             with open(file_path) as f:
-                file_text = f.read().decode('utf-8').encode('utf-8')
-        except:
-            pass
-    else:
+                file_text = f.read()
+            return file_text or None
+        except Exception as exception:
+            error_msg= 'Erro ao ler arquivo %s : %s' % (file_format, exception)
+            logger.error(error_msg)
+            self.lbrest.write_error(id, file_name, error_msg)
+
+    def read_document(self, id, file_name, file_path, file_format):
         try:
             converter = DocumentConverter()
             file_text = converter.get_file_text(file_path, file_format)
+            return file_text or None
+        except UnoConnectionException as exception:
+            error_msg= 'UnoConnectionException: %s' % str(exception)
+            logger.error(error_msg)
+            self.lbrest.write_error(id, file_name, error_msg)
+            raise_uno_process()
         except DocumentConversionException as exception:
-            logger.error('DocumentConversionException: %s' % str(exception))
+            error_msg= 'DocumentConversionException: %s' % str(exception)
+            logger.error(error_msg)
+            self.lbrest.write_error(id, file_name, error_msg)
+            raise_uno_process()
         except ErrorCodeIOException as exception:
-            logger.error('ErrorCodeIOException : %d' % exception.ErrCode)
+            error_msg = 'ErrorCodeIOException : %d' % exception.ErrCode
+            logger.error(error_msg)
+            self.lbrest.write_error(id, file_name, error_msg)
+        except Exception as exception:
+            error_msg = 'Exception : %s' % exception
+            logger.error(error_msg)
+            self.lbrest.write_error(id, file_name, error_msg)
 
-    return file_text
 
 logger = logging.getLogger("LBConverter")

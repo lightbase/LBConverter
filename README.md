@@ -17,6 +17,9 @@ IMPORTANT -> Rename the file production.ini-dist to production.ini and make the 
 
 # Start OpenOffice process if is not already started:
 ~$ sudo soffice --accept="socket,host=localhost,port=8100;urp;StarOffice.Service" --headless --nofirststartwizard
+# Put it to background
+~$ ^Z
+~$ bg
 
 # And then start the daemon:
 

@@ -1,17 +1,12 @@
 [LBConverter]
-rest_url: http://exemplo
+#rest_url: http://10.1.0.17/api
+rest_url: http://10.0.0.149/api
 ### Local do disco onde o arquivo sera salvo temporariamente
 outpath: /tmp/extract/
-### Tempo entre as leituras em busca de registros (em segundos)
-sleep_time: 15
 ### Porta do openoffice
 default_openoffice_port: 8100
 
 [Daemon]
-stdin_path = /dev/null
-stdout_path = /dev/tty
-stderr_path = /dev/tty
 pidfile_path = /var/run/lbconverter.pid
 logfile_path = /var/log/lbconverter.log
-pidfile_timeout = 5
 

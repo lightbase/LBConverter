@@ -1,4 +1,9 @@
 
+=======
+LBConverter
+===========
+
+Lightbase module for document conversion using Python UNO
 LBCONVERTER INSTALLATION
 
 # First install required libs:

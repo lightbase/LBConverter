@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
 import uno
-import subprocess
-from subprocess import CalledProcessError
 from os.path import abspath, splitext
 from com.sun.star.beans import PropertyValue
 from com.sun.star.task import ErrorCodeIOException
@@ -12,22 +10,6 @@ from exception import DocumentConversionException
 from exception import UnoConnectionException
 import uuid
 import time
-
-def raise_uno_process():
-    """ Check if soffice process is running. Case negative, tries to run it.
-    """
-    try:
-        subprocess.check_call('ps -ef | grep -v grep | grep soffice.bin', shell=True, stdout=subprocess.PIPE)
-    except CalledProcessError:
-        command = [
-            'soffice',
-            '--accept=socket,host=localhost,port=%s;urp;StarOffice.Service' % config.DEFAULT_OPENOFFICE_PORT,
-            '--headless',
-            '--nologo',
-            '--nofirststartwizard'
-        ]
-        subprocess.Popen(command, stdout=subprocess.PIPE)
-        time.sleep(5)
 
 class DocumentConverter():
     """ Convert documents extensions

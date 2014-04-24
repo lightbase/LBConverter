@@ -17,7 +17,7 @@ class LBRest():
     def get_bases(self):
         """ Get all bases which has to extract file texts
         """
-        bases = None
+        bases = [ ]
         params = """{
             "select": [
                 "nome_base",
@@ -40,7 +40,7 @@ class LBRest():
         """ Get all files which has to convert to text
         """
         files = [ ]
-        params = {'$$':'{"select":["blob_doc","nome_doc"],"literal":"dt_ext_texto is null"}'}
+        params = {'$$':'{"select":["id_reg","id_doc","blob_doc","nome_doc"],"literal":"dt_ext_texto is null"}'}
         url = config.REST_URL + '/' + self.base + '/doc'
         req = requests.get(url, params=params)
         try:
@@ -53,10 +53,10 @@ class LBRest():
             """ % (self.base, req._content))
         return files
 
-    def write_text(self, id, text):
+    def write_text(self, id_doc, text):
         """ Write extracted text from file to LightBase
         """
-        url = config.REST_URL + '/' + self.base + '/doc/' + id + '/text'
+        url = config.REST_URL + '/' + self.base + '/doc/' + str(id_doc) + '/text'
         logger.info('Escrevendo texto em : ' + url)
         data = {'texto_doc': text}
         req = requests.put(url, data=data)
@@ -65,7 +65,7 @@ class LBRest():
         except:
             logger.error("""
                 Erro ao tentar alterar texto do arquivo %s da base %s. Reposta: %s
-            """ % (str(id), self.base, req._content))
+            """ % (str(id_doc), self.base, req._content))
 
     def download(self, url):
         """Download file from url"""
@@ -86,15 +86,16 @@ class LBRest():
                     f.flush()
         return local_filename
 
-    def write_error(self, id_doc, file_name, error_msg):
+    def write_error(self, id_doc, id_reg, file_name, error_msg):
         """ Write errors to LightBase
         """
         error = {
             'base': self.base,
+            'id_reg_orig': id_reg,
             'id_doc': id_doc,
             'file_name': file_name,
             'error_msg': error_msg,
-            'datetime': str(datetime.datetime.now())
+            'dt_error': datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')
         }
         url = config.REST_URL + '/log_lbconverter/reg'
         data = {'json_reg': json.dumps(error)}
